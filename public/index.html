@@ -499,10 +499,10 @@ function compute(data){
   const blocked = [];
 
   (data.items||[]).forEach(it => {
-    // Capacity is computed only for subitems whose PARENT item is not in status "New".
+    // Capacity is computed only for subitems whose PARENT item is not in status "New" or "Done".
     const parentStatus = itemStatusId ? (it.column_values || {})[itemStatusId] : null;
-    const parentIsNew = parentStatus && /^\s*new\s*$/i.test(parentStatus);
-    const subs = parentIsNew ? [] : (it.subitems || []);
+    const parentExcluded = parentStatus && /^\s*(new|done)\s*$/i.test(parentStatus);
+    const subs = parentExcluded ? [] : (it.subitems || []);
     subs.forEach(s => {
       const cv = s.column_values || {};
       const statusLabel = subStatusId ? cv[subStatusId] : null;
@@ -582,7 +582,7 @@ function render(m){
       <div class="cap-head">
         <div>
           <h2>Sprint Capacity</h2>
-          <p class="desc" style="margin:0">Work allocation per team member · subitems whose parent item is in status "New" are excluded</p>
+          <p class="desc" style="margin:0">Work allocation per team member · subitems whose parent item is in status "New" or "Done" are excluded</p>
         </div>
         <div class="cap-cfg">
           <label for="capDays">Sprint days</label>
@@ -878,7 +878,7 @@ function buildBurn(data, m){
   const ev = [];
   (data.items||[]).forEach(it=>{
     const parentStatus = itemStatusId ? (it.column_values || {})[itemStatusId] : null;
-    if (parentStatus && /^\s*new\s*$/i.test(parentStatus)) return;   // skip "New" parents
+    if (parentStatus && /^\s*(new|done)\s*$/i.test(parentStatus)) return;   // skip "New" / "Done" parents
     (it.subitems||[]).forEach(s=>{
       const cv=s.column_values||{};
       const st = subStatusId ? cv[subStatusId] : null;
