@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprint Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: #f6f7fb; color: #1d2030;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px; line-height: 1.45;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 20px 60px; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+.topbar h1 { font-size: 19px; margin: 0; font-weight: 700; letter-spacing: -0.2px; }
+.topbar .grow { flex: 1; }
+select, .linkbtn {
+  font-size: 13px; padding: 7px 10px; border-radius: 9px; border: 1px solid #d6d9e6;
+  background: #fff; color: #1d2030; cursor: pointer; max-width: 320px;
+}
+.linkbtn { text-decoration: none; }
+.sub { color: #6b7088; font-size: 12.5px; }
+.meta { color: #6b7088; font-size: 12px; margin: -6px 0 16px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px; margin-bottom: 18px; }
+.stat { background: #fff; border: 1px solid #eceef5; border-radius: 14px; padding: 14px 16px; }
+.stat .k { font-size: 12px; color: #6b7088; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.stat .v { font-size: 26px; font-weight: 750; margin-top: 4px; letter-spacing: -0.5px; }
+.stat .v small { font-size: 13px; font-weight: 600; color: #8a8fa6; }
+
+.panel { background: #fff; border: 1px solid #eceef5; border-radius: 16px; padding: 16px 18px; margin-bottom: 18px; }
+.panel h2 { font-size: 15px; margin: 0 0 2px; font-weight: 700; }
+.panel .desc { color: #6b7088; font-size: 12.5px; margin: 0 0 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 820px){ .grid2 { grid-template-columns: 1fr; } }
+.chartbox { position: relative; width: 100%; }
+
+.people { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 10px; margin-top: 6px; }
+.person { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border: 1px solid #eceef5; border-radius: 12px; background: #fbfbfe; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 38px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 13px; }
+.person .nm { font-weight: 650; font-size: 13.5px; }
+.person .dt { color: #6b7088; font-size: 12px; margin-top: 1px; }
+.person .big { margin-left: auto; text-align: right; font-weight: 750; font-size: 16px; }
+.person .big small { display:block; font-size: 11px; color:#8a8fa6; font-weight:600; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #f0f1f7; vertical-align: top; }
+th { color: #6b7088; font-weight: 650; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
+td .pill { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 650; color:#fff; }
+.empty { color: #8a8fa6; padding: 14px 4px; font-size: 13px; }
+.loading { padding: 40px; text-align: center; color: #6b7088; }
+.errbox { background:#fff4f4; border:1px solid #f3c9c9; color:#a4282d; padding:12px 14px; border-radius:12px; font-size:13px; }
+.legendnote { font-size: 11.5px; color:#8a8fa6; margin-top:8px; }
+
+/* capacity cards */
+.cap-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.cap-cfg { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.cap-cfg label { font-size:12.5px; color:#6b7088; }
+.cap-cfg input { width:62px; padding:7px 10px; border:1px solid #d6d9e6; border-radius:9px; font-size:14px; text-align:center; color:#1d2030; }
+.cap-cfg input[type=date] { width:148px; text-align:left; }
+.cap-cfg.tf { flex-wrap:wrap; justify-content:flex-end; }
+.diag td:first-child { color:#6b7088; width:46%; }
+.cap-row { background:#fff; border:1px solid #eceef5; border-radius:14px; padding:12px 16px 14px; margin-bottom:10px; box-shadow:0 1px 2px rgba(20,20,50,.03); }
+.cap-row .top { display:flex; align-items:center; gap:12px; }
+.cap-row .nm { font-weight:700; font-size:14px; }
+.cap-row .ct { color:#6b7088; font-size:12px; margin-top:1px; }
+.cap-row .rt { margin-left:auto; text-align:right; }
+.cap-row .rt .val { font-weight:750; font-size:15px; letter-spacing:-0.2px; }
+.cap-row .rt .over { color:#df2f4a; font-weight:650; font-size:12px; margin-top:1px; }
+.cap-row .rt .left { color:#8a8fa6; font-size:12px; margin-top:1px; }
+.track { height:8px; background:#edeef4; border-radius:6px; margin-top:11px; overflow:hidden; }
+.track > span { display:block; height:100%; border-radius:6px; transition:width .3s ease; }
+.subline { font-size:12px; margin-top:1px; }
+.subline.over { color:#df2f4a; font-weight:650; }
+.subline.left { color:#8a8fa6; }
+.avatar-img { border-radius:50%; object-fit:cover; }
+.pto-row { display:flex; align-items:center; gap:7px; margin-top:11px; font-size:12px; color:#6b7088; flex-wrap:wrap; }
+.pto-row label { display:flex; align-items:center; gap:5px; }
+.pto-row input { width:48px; padding:4px 6px; border:1px solid #d6d9e6; border-radius:7px; font-size:12px; text-align:center; color:#1d2030; }
+.pto-row .avail { margin-left:auto; font-weight:650; color:#1d2030; }
+
+/* settings */
+.who { font-size:12.5px; color:#6b7088; }
+button.linkbtn { font-family:inherit; }
+.overlay { position:fixed; inset:0; background:rgba(20,22,40,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+.overlay[hidden] { display:none; }
+.modal { background:#fff; border-radius:16px; padding:22px 24px; width:100%; max-width:460px; box-shadow:0 14px 40px rgba(20,20,50,.25); }
+.modal h2 { margin:0 0 6px; font-size:17px; }
+.modal .desc { color:#6b7088; font-size:12.5px; margin:0 0 16px; }
+.fld { display:block; font-size:12.5px; color:#6b7088; font-weight:600; margin-bottom:8px; }
+.fld input { display:block; width:100%; margin-top:6px; padding:9px 11px; border:1px solid #d6d9e6; border-radius:10px; font-size:13px; color:#1d2030; }
+.chk { display:flex; align-items:center; gap:7px; font-size:12.5px; color:#6b7088; margin-bottom:6px; }
+.settings-msg { font-size:12.5px; min-height:18px; margin:8px 0 4px; }
+.settings-msg.ok { color:#0a8a4f; }
+.settings-msg.err { color:#a4282d; }
+.modal-actions { display:flex; align-items:center; gap:10px; margin-top:12px; }
+.modal-actions .grow { flex:1; }
+.btn { font-family:inherit; font-size:13px; font-weight:650; padding:8px 14px; border-radius:10px; border:1px solid #d6d9e6; background:#fff; color:#1d2030; cursor:pointer; }
+.btn.primary { background:#6c5ce7; border-color:#6c5ce7; color:#fff; }
+.btn.ghost { background:#fff; }
+.btn.danger { color:#a4282d; border-color:#eccccc; }
+.modal .hint { font-size:11.5px; color:#8a8fa6; margin:14px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>Sprint Dashboard</h1>
+    <div class="grow"></div>
+    <span id="whoami" class="who"></span>
+    <select id="boardSelect" title="Choose a sprint board"></select>
+    <a id="openBoard" class="linkbtn" target="_blank" rel="noopener">Open in monday ↗</a>
+    <button id="settingsBtn" class="linkbtn" type="button">⚙ Settings</button>
+  </div>
+  <div class="meta" id="metaLine">Select a board to load metrics.</div>
+
+  <div id="content"></div>
+</div>
+
+<div id="settingsOverlay" class="overlay" hidden>
+  <div class="modal">
+    <h2>Connect to monday</h2>
+    <p class="desc">Paste your personal monday API token. It is stored only in this browser and sent to this app's own proxy - never to any third party. Use a token with the access you're comfortable sharing.</p>
+    <label class="fld">monday API token
+      <input id="tokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="eyJhbGci...">
+    </label>
+    <label class="chk"><input id="tokenShow" type="checkbox"> Show token</label>
+    <div id="settingsMsg" class="settings-msg"></div>
+    <div class="modal-actions">
+      <button id="tokenTest" class="btn ghost" type="button">Test connection</button>
+      <div class="grow"></div>
+      <button id="tokenClear" class="btn ghost danger" type="button">Clear</button>
+      <button id="tokenSave" class="btn primary" type="button">Save &amp; load</button>
+    </div>
+    <p class="hint">Get a token in monday: avatar &rarr; <b>Developers</b> &rarr; <b>My Access Tokens</b>, or Admin &rarr; API.</p>
+  </div>
+</div>
+
+<script>
+// Each developer supplies their own Monday personal token (Settings screen).
+// It is stored in this browser and sent to our serverless proxy (/api/monday),
+// which relays to api.monday.com. The token never goes to any third party.
+const TOKEN_KEY = "sprintDash.token.v1";
+function getToken(){ try { return localStorage.getItem(TOKEN_KEY) || ""; } catch(e){ return ""; } }
+function setToken(t){ try { localStorage.setItem(TOKEN_KEY, t); } catch(e){} }
+function clearToken(){ try { localStorage.removeItem(TOKEN_KEY); } catch(e){} }
+
+// ---- GraphQL queries ----
+const Q_BOARD = `query ($ids:[ID!]) {
+  boards (ids: $ids) { id name columns { id title type settings_str } }
+}`;
+const Q_SUBCOLS = `query ($ids:[ID!]) {
+  boards (ids: $ids) { columns { id title type settings_str } }
+}`;
+const Q_ITEMS = `query ($ids:[ID!], $cursor:String) {
+  boards (ids: $ids) {
+    items_page (limit: 100, cursor: $cursor) {
+      cursor
+      items {
+        id name updated_at created_at
+        column_values { id text }
+        subitems { id name updated_at created_at column_values { id text } }
+      }
+    }
+  }
+}`;
+const Q_ME = `query { me { id name email } }`;
+
+// Boards grouped by their monday folder. Columns are resolved by title at runtime:
+//  - Server Team (Sprints) boards use "Real Estimation"
+//  - Releases boards use "Original Estimate (Hours)"
+// Both columns are in HOURS; 8h = 1 day.
+const BOARD_GROUPS = [
+  { group: "Server Team", boards: [
+    { id: 18417777925, name: "Sprint03 - 28/06 - 09/07" },
+    { id: 18416938162, name: "Sprint02 - 14/06 - 25/06" },
+    { id: 18415602975, name: "Sprint01 - 31/05 - 11/06" },
+  ]},
+  { group: "Releases", boards: [
+    { id: 18419659831, name: "v0.1.17 - 21/07 -- ?" },
+    { id: 18416942060, name: "v0.1.16 - 30/06 - 20/07" },
+    { id: 18414628225, name: "v0.1.15 - 02-29/06" },
+    { id: 18411057028, name: "v0.1.14" },
+    { id: 18404207313, name: "v0.1.13" },
+    { id: 18398227880, name: "v0.1.12" },
+    { id: 18395719444, name: "v0.1.11" },
+    { id: 18391322916, name: "v0.1.4" },
+  ]},
+];
+
+const COLORS = ["#6c5ce7","#0984e3","#00b894","#e17055","#fdcb6e","#e84393","#00cec9","#fd79a8","#636e72","#a29bfe","#55efc4","#ff7675"];
+const STATUS_COLORS = { done:"#00c875", wip:"#fdab3d", todo:"#9aa0b4", blocked:"#df2f4a", other:"#7f8bb5" };
+
+// Real monday profile photos (auto-generated "initials" placeholders are intentionally omitted
+// so they fall back to the styled initials avatar). Loaded via <img>; if the sandbox blocks the
+// monday CDN, each falls back to initials automatically.
+// ---- persisted settings (localStorage) ----
+const LS_KEY = "sprintDash.v1";
+function loadSettings(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } }
+function saveSettings(){ try { localStorage.setItem(LS_KEY, JSON.stringify(SETTINGS)); } catch(e){} }
+let SETTINGS = loadSettings();
+if (typeof SETTINGS.sprintDays !== "number") SETTINGS.sprintDays = 15;
+if (!SETTINGS.pto) SETTINGS.pto = {};            // pto[boardId][personName] = {vac, sick}
+if (!SETTINGS.tf) SETTINGS.tf = {};              // tf[boardId] = {from, to}
+let CURRENT_BOARD = null;
+function ptoFor(name){ const b = SETTINGS.pto[CURRENT_BOARD] || {}; return b[name] || { vac:0, sick:0 }; }
+function setPto(name, vac, sick){
+  if (!SETTINGS.pto[CURRENT_BOARD]) SETTINGS.pto[CURRENT_BOARD] = {};
+  SETTINGS.pto[CURRENT_BOARD][name] = { vac, sick };
+  saveSettings();
+}
+function tfFor(){ return SETTINGS.tf[CURRENT_BOARD] || null; }
+function setTf(from, to){ SETTINGS.tf[CURRENT_BOARD] = { from, to }; saveSettings(); }
+
+let charts = [];
+let vsChart = null, vsPeople = [];
+let burnChart = null;
+
+/* ---------- Monday GraphQL (via serverless proxy) ---------- */
+async function gql(query, variables){
+  const token = getToken();
+  if (!token) throw new Error("No Monday token set. Open Settings to connect.");
+  let r;
+  try {
+    r = await fetch("/api/monday", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-monday-token": token },
+      body: JSON.stringify({ query, variables: variables || {} }),
+    });
+  } catch(e){ throw new Error("Network error reaching the proxy: " + (e.message||e)); }
+  let j;
+  try { j = await r.json(); } catch(e){ throw new Error("Bad response from proxy (status " + r.status + ")"); }
+  if (j && j.errors) throw new Error(j.errors.map(e=>e.message).join("; "));
+  if (j && j.error) throw new Error(typeof j.error === "string" ? j.error : JSON.stringify(j.error));
+  if (!j || !j.data){
+    if (r.status === 401) throw new Error("Monday rejected the token (401). Check it in Settings.");
+    throw new Error("Empty response from Monday (status " + r.status + ").");
+  }
+  return j.data;
+}
+// GraphQL column_values come as an array; the rest of the app expects a map id -> text.
+function cvMap(arr){ const m={}; (arr||[]).forEach(c=>{ m[c.id]=c.text; }); return m; }
+function normItems(arr){
+  return (arr||[]).map(it=>({
+    name: it.name, updated_at: it.updated_at, created_at: it.created_at,
+    column_values: cvMap(it.column_values),
+    subitems: (it.subitems||[]).map(s=>({
+      name: s.name, updated_at: s.updated_at, created_at: s.created_at,
+      column_values: cvMap(s.column_values)
+    }))
+  }));
+}
+// Convert raw columns (with settings_str) into {id,title,type,settings:{labels:[{label,is_done}]}}.
+function normCols(cols){
+  return (cols||[]).map(c=>{
+    let settings = {};
+    try { settings = c.settings_str ? JSON.parse(c.settings_str) : {}; } catch(e){}
+    let labels = [];
+    if (settings.labels){
+      if (Array.isArray(settings.labels)) labels = settings.labels.map(l=>({ label:(l&&l.name)||l, is_done:false }));
+      else labels = Object.values(settings.labels).map(v=>({ label:v, is_done:false }));
+    }
+    return { id:c.id, title:c.title, type:c.type, settings:{ labels } };
+  });
+}
+
+/* ---------- column resolution ---------- */
+function pick(cols, opts){
+  // opts: {titles:[...], type:'...'}  match by title (case-insensitive contains) then by type
+  if (opts.titles){
+    for (const want of opts.titles){
+      const c = cols.find(c => (c.title||"").toLowerCase() === want.toLowerCase());
+      if (c) return c;
+    }
+    for (const want of opts.titles){
+      const c = cols.find(c => (c.title||"").toLowerCase().includes(want.toLowerCase()));
+      if (c) return c;
+    }
+  }
+  if (opts.type){ const c = cols.find(c => c.type === opts.type); if (c) return c; }
+  return null;
+}
+function doneLabelsOf(statusCol){
+  const set = new Set();
+  const labels = (statusCol && statusCol.settings && statusCol.settings.labels) || [];
+  labels.forEach(l => { if (l.is_done === true || /done|resolved|complete/i.test(l.label||"")) set.add(l.label); });
+  return set;
+}
+function blockedLabelsOf(statusCol){
+  const set = new Set();
+  const labels = (statusCol && statusCol.settings && statusCol.settings.labels) || [];
+  labels.forEach(l => { if (/block/i.test(l.label||"")) set.add(l.label); });
+  return set;
+}
+function classifyStatus(label, doneSet, blockedSet){
+  if (!label) return "todo";
+  if (doneSet.has(label)) return "done";
+  if (blockedSet.has(label)) return "blocked";
+  if (/^todo$|^new$|^to do$|^committed$|^commited$|^pending/i.test(label)) return "todo";
+  if (/wip|progress|review|qa|ta /i.test(label)) return "wip";
+  return "todo";
+}
+
+/* ---------- data fetch ---------- */
+async function fetchAll(boardId){
+  const bData = await gql(Q_BOARD, { ids: [String(boardId)] });
+  const board0 = (bData.boards || [])[0];
+  if (!board0) throw new Error("Board " + boardId + " not found, or this token has no access to it.");
+  const rawCols = board0.columns || [];
+  const cols = normCols(rawCols);
+
+  // Subitems live on a hidden board referenced by the parent's "subtasks" column.
+  let subCols = [];
+  const subColRaw = rawCols.find(c => c.type === "subtasks");
+  if (subColRaw){
+    let subBoardId = null;
+    try { subBoardId = (JSON.parse(subColRaw.settings_str || "{}").boardIds || [])[0]; } catch(e){}
+    if (subBoardId){
+      const sData = await gql(Q_SUBCOLS, { ids: [String(subBoardId)] });
+      subCols = normCols((((sData.boards || [])[0]) || {}).columns || []);
+    }
+  }
+  const board = { id: board0.id, name: board0.name, columns: cols, subItemColumns: subCols };
+
+  const estCol = pick(subCols, { titles:["Original Estimate (Hours)","Real Estimation","Estimate","Estimation"] });
+  const subOwnerCol = pick(subCols, { titles:["Owner","Person","Assignee","Asignee"], type:"people" });
+  const subStatusCol = pick(subCols, { titles:["Status"], type:"status" });
+  const itemOwnerCol = pick(cols, { titles:["Asignee","Assignee","Person","Owner"], type:"people" });
+  const itemStatusCol = pick(cols, { titles:["Status"], type:"status" });
+
+  // Both "Real Estimation" (Server Team) and "Original Estimate (Hours)" (Releases) are in hours; 8h = 1 day.
+  const unitIsHours = true;
+
+  const resolved = {
+    board, estCol, subOwnerCol, subStatusCol, itemOwnerCol, itemStatusCol, unitIsHours,
+    subDone: doneLabelsOf(subStatusCol), subBlocked: blockedLabelsOf(subStatusCol),
+    itemDone: doneLabelsOf(itemStatusCol), itemBlocked: blockedLabelsOf(itemStatusCol),
+  };
+
+  let items = [], cursor = null, page = 0;
+  do {
+    const d = await gql(Q_ITEMS, { ids: [String(boardId)], cursor });
+    const ip = ((((d.boards || [])[0]) || {}).items_page) || {};
+    normItems(ip.items).forEach(it => items.push(it));
+    cursor = ip.cursor || null;
+    page++;
+  } while (cursor && page < 20);
+
+  const meta = { pages: page, truncated: !!cursor, itemCount: items.length };
+  return { resolved, items, meta };
+}
+
+/* ---------- helpers ---------- */
+function splitPeople(v){
+  if (!v) return [];
+  return String(v).split(",").map(s=>s.trim()).filter(Boolean);
+}
+function num(v){ const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function initials(name){
+  const p = name.trim().split(/\s+/);
+  return ((p[0]||"")[0]||"") + ((p[1]||"")[0]||"");
+}
+function colorFor(name){
+  let h=0; for (let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  return COLORS[h % COLORS.length];
+}
+function avatarHtml(name, size){
+  const s = size || 34;
+  const init = esc((initials(name)||"?").toUpperCase());
+  const bg = name === "Unassigned" ? "#b8bdd0" : colorFor(name);
+  const box = `width:${s}px;height:${s}px;flex:0 0 ${s}px;`;
+  return `<div class="avatar" style="${box}font-size:12px;background:${bg}">${init}</div>`;
+}
+function toDays(estUnitsHours, units){ return estUnitsHours ? units/8 : units; }
+function fmt(n){ return (Math.round(n*100)/100).toLocaleString(undefined,{maximumFractionDigits:2}); }
+
+/* ---------- compute ---------- */
+function compute(data){
+  const r = data.resolved;
+  const estId = r.estCol && r.estCol.id;
+  const subOwnerId = r.subOwnerCol && r.subOwnerCol.id;
+  const subStatusId = r.subStatusCol && r.subStatusCol.id;
+  const itemOwnerId = r.itemOwnerCol && r.itemOwnerCol.id;
+  const itemStatusId = r.itemStatusCol && r.itemStatusCol.id;
+
+  const perPerson = {}; // name -> {assignedDays, doneDays, items}
+  const ensure = n => perPerson[n] || (perPerson[n] = { assignedDays:0, doneDays:0, items:0 });
+
+  let totalUnits=0, doneUnits=0, subTotal=0, subDoneCount=0, subRemoved=0, subNoEst=0;
+  const statusUnits = { done:0, wip:0, todo:0, blocked:0 };
+  const statusCount = { done:0, wip:0, todo:0, blocked:0 };
+  const blocked = [];
+
+  (data.items||[]).forEach(it => {
+    const subs = it.subitems || [];
+    subs.forEach(s => {
+      const cv = s.column_values || {};
+      const statusLabel = subStatusId ? cv[subStatusId] : null;
+      if (statusLabel && /removed/i.test(statusLabel)) { subRemoved++; return; } // exclude Removed
+      const units = estId ? num(cv[estId]) : 0;
+      if (!units) subNoEst++;
+      const owners = subOwnerId ? splitPeople(cv[subOwnerId]) : [];
+      const cls = classifyStatus(statusLabel, r.subDone, r.subBlocked);
+      const isDone = cls === "done";
+
+      totalUnits += units; if (isDone) doneUnits += units;
+      subTotal++; if (isDone) subDoneCount++;
+      statusUnits[cls] = (statusUnits[cls]||0) + units;
+      statusCount[cls] = (statusCount[cls]||0) + 1;
+
+      const days = toDays(r.unitIsHours, units);
+      const share = owners.length ? days/owners.length : days;
+      const list = owners.length ? owners : ["Unassigned"];
+      list.forEach(o => {
+        const p = ensure(o);
+        p.assignedDays += share; p.items += 1;
+        if (isDone) p.doneDays += share;
+      });
+
+      if (cls === "blocked"){
+        blocked.push({ type:"Subitem", name:s.name, owner: owners.join(", ")||"-", parent: it.name,
+          hours: r.unitIsHours?units:units*8, days, status: statusLabel||"-" });
+      }
+    });
+
+    // parent-level blocked (items with no subitems still surface)
+    const icv = it.column_values || {};
+    const istatus = itemStatusId ? icv[itemStatusId] : null;
+    if (istatus && r.itemBlocked.has(istatus)){
+      const owner = itemOwnerId ? splitPeople(icv[itemOwnerId]).join(", ") : "";
+      blocked.push({ type:"Item", name:it.name, owner: owner||"-", parent:"-", hours:null, days:null, status:istatus });
+    }
+  });
+
+  const people = Object.entries(perPerson)
+    .map(([name,v]) => ({ name, ...v }))
+    .sort((a,b) => b.assignedDays - a.assignedDays);
+
+  const totalDays = people.reduce((s,p)=>s+p.assignedDays,0);
+  const memberCount = people.filter(p=>p.name!=="Unassigned").length;
+
+  return { r, people, totalDays, memberCount, totalUnits, doneUnits, subTotal, subDoneCount,
+           subRemoved, subNoEst, statusUnits, statusCount, blocked, meta: data.meta || {} };
+}
+
+/* ---------- render ---------- */
+function el(html){ const d=document.createElement("div"); d.innerHTML=html.trim(); return d.firstChild; }
+function destroyCharts(){ charts.forEach(c=>{try{c.destroy()}catch(e){}}); charts=[]; vsChart=null; burnChart=null; }
+
+function render(m){
+  destroyCharts();
+  const unitLabel = m.r.unitIsHours ? "hours → days @8h" : "days";
+  const estTitle = (m.r.estCol && m.r.estCol.title) || "(no estimate column)";
+  document.getElementById("metaLine").textContent =
+    `Capacity from subitem "${estTitle}" (${unitLabel}) grouped by Owner · ${m.subTotal} subitems · loaded ${new Date().toLocaleString()}`;
+
+  const c = document.getElementById("content");
+  c.innerHTML = "";
+
+  if (!m.r.estCol){
+    c.appendChild(el(`<div class="errbox">This board has no recognizable estimate column (looked for "Original Estimate (Hours)" / "Real Estimation"). Capacity can't be computed. Other widgets below may still be limited.</div>`));
+  }
+
+  const donePctCount = m.subTotal ? Math.round(m.subDoneCount/m.subTotal*100) : 0;
+  const donePctHrs = m.totalUnits ? Math.round(m.doneUnits/m.totalUnits*100) : 0;
+  const totalDaysScope = m.r.unitIsHours ? m.totalUnits/8 : m.totalUnits;
+
+  // Capacity
+  const capPanel = el(`
+    <div class="panel">
+      <div class="cap-head">
+        <div>
+          <h2>Sprint Capacity</h2>
+          <p class="desc" style="margin:0">Work allocation per team member</p>
+        </div>
+        <div class="cap-cfg">
+          <label for="capDays">Sprint days</label>
+          <input id="capDays" type="number" min="1" step="1" value="15">
+        </div>
+      </div>
+      <div id="capList"></div>
+    </div>`);
+  c.appendChild(capPanel);
+
+  // Burndown (all items) with timeframe controls
+  c.appendChild(el(`
+    <div class="panel">
+      <div class="cap-head">
+        <div>
+          <h2>2 · Burndown - all items</h2>
+          <p class="desc" style="margin:0">Remaining effort (days) over time vs. the ideal straight-line burn. Set the timeframe below.</p>
+        </div>
+        <div class="cap-cfg tf">
+          <label for="tfFrom">From</label><input id="tfFrom" type="date">
+          <label for="tfTo">To</label><input id="tfTo" type="date">
+        </div>
+      </div>
+      <div class="chartbox" style="height:320px"><canvas id="burnChart"></canvas></div>
+      <div class="legendnote">Approximate: a point-in-time API read has no daily history, so completion dates are inferred from each item's last-updated date. Work completed before "From" is already burned down at the start of the line.</div>
+    </div>`));
+
+  // Completion + work by status
+  c.appendChild(el(`
+    <div class="panel">
+      <h2>3 · Completion & work by status</h2>
+      <p class="desc">Left: % of effort completed. Right: where the work sits right now, by effort.</p>
+      <div class="grid2">
+        <div><div class="chartbox" style="height:240px"><canvas id="gaugeChart"></canvas></div></div>
+        <div><div class="chartbox" style="height:240px"><canvas id="statusChart"></canvas></div></div>
+      </div>
+    </div>`));
+
+  // Capacity vs delivered
+  c.appendChild(el(`
+    <div class="panel">
+      <h2>4 · Capacity vs. Delivered</h2>
+      <p class="desc">Per person: available days (sprint minus vacation/sick), assigned effort, and how much is already Done - spots overload and stalls.</p>
+      <div class="chartbox" style="height:${Math.max(220, m.people.filter(p=>p.name!=="Unassigned").length*40)}px"><canvas id="vsChart"></canvas></div>
+    </div>`));
+
+  // Blocked
+  const blkRows = m.blocked.length ? m.blocked.map(b=>`
+    <tr>
+      <td>${esc(b.name)}</td>
+      <td>${esc(b.owner)}</td>
+      <td>${esc(b.parent)}</td>
+      <td>${b.hours==null?"-":fmt(b.hours)+"h"}</td>
+      <td><span class="pill" style="background:${STATUS_COLORS.blocked}">${esc(b.status)}</span></td>
+    </tr>`).join("") : "";
+  c.appendChild(el(`
+    <div class="panel">
+      <h2>5 · Blocked / Stuck Items</h2>
+      <p class="desc">Anything flagged Blocked - needs attention to keep the sprint moving.</p>
+      ${m.blocked.length ? `<table><thead><tr><th>Name</th><th>Owner</th><th>Parent</th><th>Est.</th><th>Status</th></tr></thead><tbody>${blkRows}</tbody></table>`
+        : `<div class="empty">Nothing blocked right now.</div>`}
+    </div>`));
+
+  // Data integrity & diagnostics
+  const meta = m.meta || {};
+  const una = m.people.find(p=>p.name==="Unassigned");
+  c.appendChild(el(`
+    <div class="panel">
+      <h2>6 · Data integrity & diagnostics</h2>
+      <p class="desc">Confirm the dashboard read the right board, columns and every row. Cross-check these totals against monday.</p>
+      <table class="diag"><tbody>
+        <tr><td>Estimate column used</td><td><b>${esc((m.r.estCol&&m.r.estCol.title)||"- none found -")}</b> (hours, ÷8 = days)</td></tr>
+        <tr><td>Owner column (subitems)</td><td>${esc((m.r.subOwnerCol&&m.r.subOwnerCol.title)||"-")}</td></tr>
+        <tr><td>Status column (subitems)</td><td>${esc((m.r.subStatusCol&&m.r.subStatusCol.title)||"-")}</td></tr>
+        <tr><td>Parent items fetched</td><td>${meta.itemCount==null?"?":meta.itemCount} (${meta.pages==null?"?":meta.pages} page${meta.pages===1?"":"s"})</td></tr>
+        <tr><td>Subitems counted</td><td>${m.subTotal}</td></tr>
+        <tr><td>Excluded - status "Removed"</td><td>${m.subRemoved||0}</td></tr>
+        <tr><td>Counted but no estimate (0d)</td><td>${m.subNoEst||0}${m.subNoEst?' - these add 0 to capacity; fill them in monday':''}</td></tr>
+        <tr><td>Unassigned effort</td><td>${fmt(una?una.assignedDays:0)} d</td></tr>
+        <tr><td>Total scope</td><td>${fmt(m.totalUnits)} h  =  ${fmt(m.totalUnits/8)} d</td></tr>
+        <tr><td>Completed effort</td><td>${fmt(m.doneUnits)} h  =  ${fmt(m.doneUnits/8)} d</td></tr>
+        <tr><td>Last refreshed</td><td>${new Date().toLocaleString()}</td></tr>
+        ${meta.truncated?`<tr><td style="color:#a4282d">⚠ Pagination</td><td style="color:#a4282d">Hit the page cap - some items may be missing. Tell me and I'll raise the limit.</td></tr>`:""}
+      </tbody></table>
+      <div class="legendnote">To verify: open the board in monday, group/sum the estimate column by Owner, and compare to Sprint Capacity above. They should match within rounding, minus any "Removed" rows.</div>
+    </div>`));
+
+  // ---- capacity list + charts ----
+  const capInput = document.getElementById("capDays");
+  if (capInput){
+    capInput.value = SETTINGS.sprintDays;
+    capInput.addEventListener("input", ()=>{
+      SETTINGS.sprintDays = Math.max(1, parseFloat(capInput.value)||15);
+      saveSettings();
+      renderCapacityList(m);
+      refreshVs();
+    });
+  }
+  // timeframe controls for the burndown
+  const tf = tfFor() || {};
+  const tfFromI = document.getElementById("tfFrom");
+  const tfToI = document.getElementById("tfTo");
+  if (tfFromI && tfToI){
+    tfFromI.value = tf.from || "";
+    tfToI.value = tf.to || "";
+    const onTf = () => {
+      if (!tfFromI.value || !tfToI.value) return;
+      setTf(tfFromI.value, tfToI.value);
+      if (burnChart){ try{ burnChart.destroy(); }catch(e){} burnChart=null; }
+      drawBurn(m);
+    };
+    tfFromI.addEventListener("change", onTf);
+    tfToI.addEventListener("change", onTf);
+  }
+
+  renderCapacityList(m);
+  drawBurn(m);
+  drawStatus(m);
+  drawGauge(m, donePctHrs);
+  drawVs(m);
+}
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
+
+function capCalc(assigned, sprintDays, vac, sick){
+  const avail = Math.max(0, sprintDays - vac - sick);
+  const over = assigned > avail;
+  const fillW = avail > 0 ? Math.min(100, (assigned/avail)*100) : (assigned > 0 ? 100 : 0);
+  const color = over ? "#df2f4a" : "#2563eb";
+  const sub = over ? `+${fmt(assigned-avail)}d over` : `${fmt(avail-assigned)}d left`;
+  return { avail, over, fillW, color, sub };
+}
+function renderCapacityList(m){
+  const box = document.getElementById("capList"); if(!box) return;
+  const sprintDays = SETTINGS.sprintDays;
+  if (!m.people.length){ box.innerHTML = `<div class="empty">No capacity data on this board.</div>`; return; }
+
+  box.innerHTML = m.people.map(p=>{
+    const pto = ptoFor(p.name);
+    const c = capCalc(p.assignedDays, sprintDays, pto.vac, pto.sick);
+    return `
+    <div class="cap-row" data-name="${esc(p.name)}">
+      <div class="top">
+        ${avatarHtml(p.name, 34)}
+        <div>
+          <div class="nm">${esc(p.name)}</div>
+          <div class="ct">${p.items} item${p.items===1?"":"s"}</div>
+        </div>
+        <div class="rt">
+          <div class="val">${fmt(p.assignedDays)} / ${fmt(c.avail)}d</div>
+          <div class="subline ${c.over?"over":"left"}">${c.sub}</div>
+        </div>
+      </div>
+      <div class="track"><span style="width:${c.fillW}%;background:${c.color}"></span></div>
+      <div class="pto-row">
+        <label>Vacation <input class="vac" type="number" min="0" step="0.5" value="${pto.vac||0}"></label>
+        <label>Sick <input class="sick" type="number" min="0" step="0.5" value="${pto.sick||0}"></label>
+        <span class="avail">Available: ${fmt(c.avail)}d</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  const byName = {}; m.people.forEach(p => byName[p.name] = p.assignedDays);
+  box.querySelectorAll(".cap-row").forEach(row => {
+    const name = row.dataset.name;
+    const vacI = row.querySelector(".vac"), sickI = row.querySelector(".sick");
+    const onChange = () => {
+      const vac = Math.max(0, parseFloat(vacI.value)||0);
+      const sick = Math.max(0, parseFloat(sickI.value)||0);
+      setPto(name, vac, sick);
+      const c = capCalc(byName[name]||0, SETTINGS.sprintDays, vac, sick);
+      row.querySelector(".val").textContent = `${fmt(byName[name]||0)} / ${fmt(c.avail)}d`;
+      const sl = row.querySelector(".subline"); sl.textContent = c.sub; sl.className = `subline ${c.over?"over":"left"}`;
+      const span = row.querySelector(".track > span"); span.style.width = c.fillW+"%"; span.style.background = c.color;
+      row.querySelector(".avail").textContent = `Available: ${fmt(c.avail)}d`;
+      refreshVs();
+    };
+    vacI.addEventListener("input", onChange);
+    sickI.addEventListener("input", onChange);
+  });
+}
+function drawStatus(m){
+  const ctx = document.getElementById("statusChart"); if(!ctx) return;
+  const days = k => m.r.unitIsHours ? m.statusUnits[k]/8 : m.statusUnits[k];
+  charts.push(new Chart(ctx, {
+    type:"bar",
+    data:{ labels:["Done","In progress","To do","Blocked"],
+      datasets:[{ label:"Days", data:[days("done"),days("wip"),days("todo"),days("blocked")].map(v=>+v.toFixed(2)),
+      backgroundColor:[STATUS_COLORS.done,STATUS_COLORS.wip,STATUS_COLORS.todo,STATUS_COLORS.blocked], borderRadius:6 }] },
+    options:{ maintainAspectRatio:false, plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} days`}} },
+      scales:{ y:{ title:{display:true,text:"Effort (days)"}, grid:{color:"#f0f1f7"} }, x:{grid:{display:false}} } }
+  }));
+}
+function drawGauge(m, pct){
+  const ctx = document.getElementById("gaugeChart"); if(!ctx) return;
+  charts.push(new Chart(ctx, {
+    type:"doughnut",
+    data:{ labels:["Done","Remaining"], datasets:[{ data:[pct,100-pct],
+      backgroundColor:[STATUS_COLORS.done,"#e9ebf3"], borderWidth:0 }] },
+    options:{ maintainAspectRatio:false, cutout:"72%",
+      plugins:{ legend:{position:"bottom"}, tooltip:{callbacks:{label:c=>` ${c.raw}%`}},
+        title:{display:true,text:`${pct}% of effort completed`, font:{size:14}} } }
+  }));
+}
+function availFor(p){
+  const pto = ptoFor(p.name);
+  return Math.max(0, SETTINGS.sprintDays - (pto.vac||0) - (pto.sick||0));
+}
+function drawVs(m){
+  const ctx = document.getElementById("vsChart"); if(!ctx) return;
+  const ppl = m.people.filter(p=>p.name!=="Unassigned");
+  vsPeople = ppl;
+  vsChart = new Chart(ctx, {
+    type:"bar",
+    data:{ labels: ppl.map(p=>p.name),
+      datasets:[
+        { label:"Available", data:ppl.map(p=>+availFor(p).toFixed(2)), backgroundColor:"#e3e6f0", borderRadius:5 },
+        { label:"Assigned", data:ppl.map(p=>+p.assignedDays.toFixed(2)), backgroundColor:"#6c5ce7", borderRadius:5 },
+        { label:"Done", data:ppl.map(p=>+p.doneDays.toFixed(2)), backgroundColor:STATUS_COLORS.done, borderRadius:5 }
+      ] },
+    options:{ indexAxis:"y", maintainAspectRatio:false,
+      plugins:{ legend:{position:"top"}, tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)} days`}} },
+      scales:{ x:{ title:{display:true,text:"Days"}, grid:{color:"#f0f1f7"} }, y:{grid:{display:false}} } }
+  });
+  charts.push(vsChart);
+}
+function refreshVs(){
+  if(!vsChart || !vsPeople.length) return;
+  vsChart.data.datasets[0].data = vsPeople.map(p=>+availFor(p).toFixed(2));
+  vsChart.update();
+}
+function dateList(from, to){
+  const out = [];
+  let d = new Date(from + "T00:00:00"), end = new Date(to + "T00:00:00");
+  if (isNaN(d) || isNaN(end) || end < d) return out;
+  let guard = 0;
+  while (d <= end && guard < 370){ out.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); guard++; }
+  return out;
+}
+function computeBurnSeries(m, from, to){
+  const labels = dateList(from, to);
+  const scope = m._scopeDays || 0;
+  const ev = (m._doneEvents || []).slice().sort((a,b)=>a.when<b.when?-1:1);
+  const remaining = [], ideal = [], n = labels.length;
+  labels.forEach((day, i) => {
+    let burned = 0;
+    for (const e of ev){ if (e.when <= day) burned += e.days; else break; }
+    remaining.push(Math.max(0, scope - burned));
+    ideal.push(n > 1 ? scope * (1 - i/(n-1)) : 0);
+  });
+  return { labels, remaining, ideal, scope };
+}
+function drawBurn(m){
+  const ctx = document.getElementById("burnChart"); if(!ctx) return;
+  const tf = tfFor() || {};
+  const s = computeBurnSeries(m, tf.from, tf.to);
+  if (!s.labels.length){
+    ctx.parentElement.innerHTML = `<div class="empty">Set a valid From/To date range to chart the burndown.</div>`;
+    return;
+  }
+  const dense = s.labels.length > 40;
+  burnChart = new Chart(ctx, {
+    type:"line",
+    data:{ labels: s.labels,
+      datasets:[
+        { label:"Remaining (actual)", data: s.remaining.map(v=>+v.toFixed(2)), borderColor:"#6c5ce7", backgroundColor:"rgba(108,92,231,.12)", fill:true, tension:.2, pointRadius: dense?0:2 },
+        { label:"Ideal", data: s.ideal.map(v=>+v.toFixed(2)), borderColor:"#b8bdd0", borderDash:[6,5], pointRadius:0, fill:false }
+      ] },
+    options:{ maintainAspectRatio:false, plugins:{ legend:{position:"top"},
+      tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)} days`}} },
+      scales:{ y:{ title:{display:true,text:"Remaining effort (days)"}, beginAtZero:true, grid:{color:"#f0f1f7"} },
+        x:{ grid:{display:false}, ticks:{ maxTicksLimit:12, autoSkip:true } } } }
+  });
+  charts.push(burnChart);
+}
+
+/* build burndown source data + default timeframe before render */
+function buildBurn(data, m){
+  const r = m.r; const estId = r.estCol && r.estCol.id;
+  const subStatusId = r.subStatusCol && r.subStatusCol.id;
+  const ev = [];
+  (data.items||[]).forEach(it=>{
+    (it.subitems||[]).forEach(s=>{
+      const cv=s.column_values||{};
+      const st = subStatusId ? cv[subStatusId] : null;
+      if (st && /removed/i.test(st)) return;
+      if (classifyStatus(st, r.subDone, r.subBlocked)!=="done") return;
+      const units = estId ? num(cv[estId]) : 0;
+      const days = toDays(r.unitIsHours, units);
+      const when = (s.updated_at||s.created_at||"").slice(0,10);
+      if (when && days > 0) ev.push({ when, days });
+    });
+  });
+  m._doneEvents = ev;
+  m._scopeDays = r.unitIsHours ? m.totalUnits/8 : m.totalUnits;
+  // default timeframe (only if user hasn't set one for this board)
+  if (!tfFor()){
+    const today = new Date().toISOString().slice(0,10);
+    let from, to;
+    if (ev.length){ const ds = ev.map(e=>e.when).sort(); from = ds[0]; to = ds[ds.length-1]; }
+    if (!from){ const d = new Date(); d.setDate(d.getDate()-14); from = d.toISOString().slice(0,10); }
+    if (!to || to < today) to = today;
+    setTf(from, to);
+  }
+}
+
+/* ---------- boot ---------- */
+async function load(boardId){
+  CURRENT_BOARD = boardId;
+  const c = document.getElementById("content");
+  c.innerHTML = `<div class="loading">Loading sprint data from monday…</div>`;
+  try {
+    const data = await fetchAll(boardId);
+    const m = compute(data);
+    buildBurn(data, m);
+    render(m);
+  } catch(e){
+    c.innerHTML = `<div class="errbox">Couldn't load this board: ${esc(e && e.message ? e.message : String(e))}</div>`;
+  }
+}
+
+/* ---------- settings / token ---------- */
+function openSettings(){
+  const ov = document.getElementById("settingsOverlay");
+  document.getElementById("tokenInput").value = getToken();
+  document.getElementById("settingsMsg").textContent = "";
+  document.getElementById("settingsMsg").className = "settings-msg";
+  ov.hidden = false;
+}
+function closeSettings(){ document.getElementById("settingsOverlay").hidden = true; }
+function setWho(name){
+  document.getElementById("whoami").textContent = name ? ("Connected as " + name) : "";
+}
+async function testToken(showOnly){
+  const msg = document.getElementById("settingsMsg");
+  msg.className = "settings-msg"; msg.textContent = "Testing…";
+  try {
+    const d = await gql(Q_ME, {});
+    const me = d.me || {};
+    msg.className = "settings-msg ok";
+    msg.textContent = "Connected as " + (me.name || "?") + (me.email ? " (" + me.email + ")" : "");
+    setWho(me.name || "");
+    return true;
+  } catch(e){
+    msg.className = "settings-msg err";
+    msg.textContent = e && e.message ? e.message : String(e);
+    return false;
+  }
+}
+
+let BOARDS_BOUND = false;
+function bindBoards(){
+  if (BOARDS_BOUND) return;
+  const sel = document.getElementById("boardSelect");
+  BOARD_GROUPS.forEach(g=>{
+    const og = document.createElement("optgroup"); og.label = g.group;
+    g.boards.forEach(b=>{ const o=document.createElement("option"); o.value=b.id; o.textContent=b.name; og.appendChild(o); });
+    sel.appendChild(og);
+  });
+  const link = document.getElementById("openBoard");
+  function syncLink(){ link.href = `https://superplay.monday.com/boards/${sel.value}`; }
+  if (SETTINGS.lastBoard && sel.querySelector(`option[value="${SETTINGS.lastBoard}"]`)) sel.value = SETTINGS.lastBoard;
+  sel.addEventListener("change", ()=>{ SETTINGS.lastBoard = +sel.value; saveSettings(); syncLink(); load(+sel.value); });
+  syncLink();
+  BOARDS_BOUND = true;
+}
+function startDashboard(){
+  bindBoards();
+  load(+document.getElementById("boardSelect").value);
+}
+
+function init(){
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("tokenShow").addEventListener("change", e=>{
+    document.getElementById("tokenInput").type = e.target.checked ? "text" : "password";
+  });
+  document.getElementById("tokenTest").addEventListener("click", async ()=>{
+    const t = document.getElementById("tokenInput").value.trim();
+    if (!t){ const m=document.getElementById("settingsMsg"); m.className="settings-msg err"; m.textContent="Enter a token first."; return; }
+    setToken(t); await testToken();
+  });
+  document.getElementById("tokenSave").addEventListener("click", async ()=>{
+    const t = document.getElementById("tokenInput").value.trim();
+    if (!t){ const m=document.getElementById("settingsMsg"); m.className="settings-msg err"; m.textContent="Enter a token first."; return; }
+    setToken(t);
+    const ok = await testToken();
+    if (ok){ closeSettings(); startDashboard(); }
+  });
+  document.getElementById("tokenClear").addEventListener("click", ()=>{
+    clearToken();
+    document.getElementById("tokenInput").value = "";
+    setWho("");
+    const m=document.getElementById("settingsMsg"); m.className="settings-msg"; m.textContent="Token cleared.";
+  });
+  document.getElementById("settingsOverlay").addEventListener("click", e=>{
+    if (e.target.id === "settingsOverlay" && getToken()) closeSettings();
+  });
+
+  if (getToken()){
+    bindBoards();
+    testToken();
+    load(+document.getElementById("boardSelect").value);
+  } else {
+    document.getElementById("metaLine").textContent = "Connect your monday token to load metrics.";
+    openSettings();
+  }
+}
+init();
+</script>
+</body>
+</html>

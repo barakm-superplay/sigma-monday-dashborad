@@ -1,0 +1,9 @@
+{
+  "name": "monday-sprint-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted Monday.com sprint metrics dashboard (Vercel serverless + static frontend).",
+  "engines": {
+    "node": ">=18"
+  }
+}
