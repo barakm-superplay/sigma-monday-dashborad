@@ -107,9 +107,20 @@ td a { color: var(--accent); text-decoration: none; font-weight: 600; }
 td a:hover { text-decoration: underline; }
 
 /* collapsible panels */
-.collap-h { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
-.collap-h .chev { margin-left: auto; color: var(--faint); font-size: 12px; transition: transform .2s ease; }
+.collap-h { cursor: pointer; user-select: none; }
+.chev {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--input-border); background: var(--input-bg); color: var(--accent);
+  font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .2s ease, border-color .15s ease;
+}
+.chev:hover { border-color: var(--accent); }
 .panel.collapsed .chev { transform: rotate(-90deg); }
+/* simple panels: turn the h2 into a row so the chevron sits at the far right */
+h2.collap-h { display: flex; align-items: center; }
+h2.collap-h .chev { margin-left: auto; }
+/* config panels: let the title block grow so the chevron lands at the far right */
+.cap-head > div:first-child { flex: 1; }
 .panel.collapsed > *:not(:first-child) { display: none; }
 .panel.collapsed .cap-cfg { display: none; }
 .panel.collapsed .cap-head { margin-bottom: 0; }
@@ -671,22 +682,31 @@ function render(m){
   applyCollapsed();
 }
 
-// Make every panel collapsible by clicking its header. State persists per panel title.
+// Make every panel collapsible. A chevron button sits at the right edge of each
+// header; the title is also clickable. State persists per panel title.
 function applyCollapsed(){
   document.querySelectorAll("#content .panel").forEach(panel=>{
+    if (panel.querySelector(".chev")) return;
     const h = panel.querySelector("h2");
-    if (!h || h.querySelector(".chev")) return;
+    if (!h) return;
     const title = (h.textContent || "").trim();
-    h.classList.add("collap-h");
-    const chev = document.createElement("span");
-    chev.className = "chev"; chev.textContent = "▾";
-    h.appendChild(chev);
+    // Header that visually spans the full width: the .cap-head row if present, else the h2.
+    const header = panel.querySelector(".cap-head") || h;
+    const chev = document.createElement("button");
+    chev.type = "button"; chev.className = "chev"; chev.textContent = "▾";
+    chev.title = "Collapse / expand";
+    chev.setAttribute("aria-label", "Collapse or expand panel");
+    header.appendChild(chev);
     if (SETTINGS.collapsed[title]) panel.classList.add("collapsed");
-    h.addEventListener("click", ()=>{
+    const toggle = () => {
       const now = panel.classList.toggle("collapsed");
       SETTINGS.collapsed[title] = now;
       saveSettings();
-    });
+    };
+    chev.addEventListener("click", e=>{ e.stopPropagation(); toggle(); });
+    h.classList.add("collap-h");
+    h.title = "Click to collapse / expand";
+    h.addEventListener("click", toggle);
   });
 }
 
