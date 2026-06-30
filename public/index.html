@@ -103,6 +103,16 @@ th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--tab
 th { color: var(--muted); font-weight: 650; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
 td .pill { display:inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 650; color:#fff; }
 .empty { color: var(--faint); padding: 14px 4px; font-size: 13px; }
+td a { color: var(--accent); text-decoration: none; font-weight: 600; }
+td a:hover { text-decoration: underline; }
+
+/* collapsible panels */
+.collap-h { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; }
+.collap-h .chev { margin-left: auto; color: var(--faint); font-size: 12px; transition: transform .2s ease; }
+.panel.collapsed .chev { transform: rotate(-90deg); }
+.panel.collapsed > *:not(:first-child) { display: none; }
+.panel.collapsed .cap-cfg { display: none; }
+.panel.collapsed .cap-head { margin-bottom: 0; }
 .loading { padding: 40px; text-align: center; color: var(--muted); }
 .errbox { background:var(--err-bg); border:1px solid var(--err-border); color:var(--err-text); padding:12px 14px; border-radius:12px; font-size:13px; }
 .legendnote { font-size: 11.5px; color:var(--faint); margin-top:8px; }
@@ -280,9 +290,10 @@ const LS_KEY = "sprintDash.v1";
 function loadSettings(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch(e){ return {}; } }
 function saveSettings(){ try { localStorage.setItem(LS_KEY, JSON.stringify(SETTINGS)); } catch(e){} }
 let SETTINGS = loadSettings();
-if (typeof SETTINGS.sprintDays !== "number") SETTINGS.sprintDays = 15;
+if (typeof SETTINGS.sprintDays !== "number") SETTINGS.sprintDays = 8.5;
 if (!SETTINGS.pto) SETTINGS.pto = {};            // pto[boardId][personName] = {vac, sick}
 if (!SETTINGS.tf) SETTINGS.tf = {};              // tf[boardId] = {from, to}
+if (!SETTINGS.collapsed) SETTINGS.collapsed = {}; // collapsed[panelTitle] = true
 let CURRENT_BOARD = null;
 function ptoFor(name){ const b = SETTINGS.pto[CURRENT_BOARD] || {}; return b[name] || { vac:0, sick:0 }; }
 function setPto(name, vac, sick){
@@ -324,10 +335,10 @@ async function gql(query, variables){
 function cvMap(arr){ const m={}; (arr||[]).forEach(c=>{ m[c.id]=c.text; }); return m; }
 function normItems(arr){
   return (arr||[]).map(it=>({
-    name: it.name, updated_at: it.updated_at, created_at: it.created_at,
+    id: it.id, name: it.name, updated_at: it.updated_at, created_at: it.created_at,
     column_values: cvMap(it.column_values),
     subitems: (it.subitems||[]).map(s=>({
-      name: s.name, updated_at: s.updated_at, created_at: s.created_at,
+      id: s.id, name: s.name, updated_at: s.updated_at, created_at: s.created_at,
       column_values: cvMap(s.column_values)
     }))
   }));
@@ -455,6 +466,9 @@ function avatarHtml(name, size){
 }
 function toDays(estUnitsHours, units){ return estUnitsHours ? units/8 : units; }
 function fmt(n){ return (Math.round(n*100)/100).toLocaleString(undefined,{maximumFractionDigits:2}); }
+// Link to a monday item on the current board. Subitem rows link to their parent
+// item (subitems open inside the parent), so we always use the parent id here.
+function itemUrl(id){ return id && CURRENT_BOARD ? `https://superplay.monday.com/boards/${CURRENT_BOARD}/pulses/${id}` : null; }
 
 /* ---------- compute ---------- */
 function compute(data){
@@ -504,7 +518,7 @@ function compute(data){
 
       if (cls === "blocked"){
         blocked.push({ type:"Subitem", name:s.name, owner: owners.join(", ")||"-", parent: it.name,
-          hours: r.unitIsHours?units:units*8, days, status: statusLabel||"-" });
+          hours: r.unitIsHours?units:units*8, days, status: statusLabel||"-", link: itemUrl(it.id) });
       }
     });
 
@@ -513,7 +527,7 @@ function compute(data){
     const istatus = itemStatusId ? icv[itemStatusId] : null;
     if (istatus && r.itemBlocked.has(istatus)){
       const owner = itemOwnerId ? splitPeople(icv[itemOwnerId]).join(", ") : "";
-      blocked.push({ type:"Item", name:it.name, owner: owner||"-", parent:"-", hours:null, days:null, status:istatus });
+      blocked.push({ type:"Item", name:it.name, owner: owner||"-", parent:"-", hours:null, days:null, status:istatus, link: itemUrl(it.id) });
     }
   });
 
@@ -561,7 +575,7 @@ function render(m){
         </div>
         <div class="cap-cfg">
           <label for="capDays">Sprint days</label>
-          <input id="capDays" type="number" min="1" step="1" value="15">
+          <input id="capDays" type="number" min="0.5" step="0.5" value="8.5">
         </div>
       </div>
       <div id="capList"></div>
@@ -607,7 +621,7 @@ function render(m){
   // Blocked
   const blkRows = m.blocked.length ? m.blocked.map(b=>`
     <tr>
-      <td>${esc(b.name)}</td>
+      <td>${b.link ? `<a href="${esc(b.link)}" target="_blank" rel="noopener">${esc(b.name)} ↗</a>` : esc(b.name)}</td>
       <td>${esc(b.owner)}</td>
       <td>${esc(b.parent)}</td>
       <td>${b.hours==null?"-":fmt(b.hours)+"h"}</td>
@@ -626,7 +640,7 @@ function render(m){
   if (capInput){
     capInput.value = SETTINGS.sprintDays;
     capInput.addEventListener("input", ()=>{
-      SETTINGS.sprintDays = Math.max(1, parseFloat(capInput.value)||15);
+      SETTINGS.sprintDays = Math.max(0.5, parseFloat(capInput.value)||8.5);
       saveSettings();
       renderCapacityList(m);
       refreshVs();
@@ -654,6 +668,26 @@ function render(m){
   drawStatus(m);
   drawGauge(m, donePctHrs);
   drawVs(m);
+  applyCollapsed();
+}
+
+// Make every panel collapsible by clicking its header. State persists per panel title.
+function applyCollapsed(){
+  document.querySelectorAll("#content .panel").forEach(panel=>{
+    const h = panel.querySelector("h2");
+    if (!h || h.querySelector(".chev")) return;
+    const title = (h.textContent || "").trim();
+    h.classList.add("collap-h");
+    const chev = document.createElement("span");
+    chev.className = "chev"; chev.textContent = "▾";
+    h.appendChild(chev);
+    if (SETTINGS.collapsed[title]) panel.classList.add("collapsed");
+    h.addEventListener("click", ()=>{
+      const now = panel.classList.toggle("collapsed");
+      SETTINGS.collapsed[title] = now;
+      saveSettings();
+    });
+  });
 }
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch])); }
