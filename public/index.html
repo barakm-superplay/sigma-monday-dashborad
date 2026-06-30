@@ -499,10 +499,7 @@ function compute(data){
   const blocked = [];
 
   (data.items||[]).forEach(it => {
-    // Capacity is computed only for subitems whose PARENT item is not in status "New" or "Done".
-    const parentStatus = itemStatusId ? (it.column_values || {})[itemStatusId] : null;
-    const parentExcluded = parentStatus && /^\s*(new|done)\s*$/i.test(parentStatus);
-    const subs = parentExcluded ? [] : (it.subitems || []);
+    const subs = it.subitems || [];
     subs.forEach(s => {
       const cv = s.column_values || {};
       const statusLabel = subStatusId ? cv[subStatusId] : null;
@@ -518,13 +515,15 @@ function compute(data){
       statusUnits[cls] = (statusUnits[cls]||0) + units;
       statusCount[cls] = (statusCount[cls]||0) + 1;
 
+      // Capacity = sum of estimate hours (-> days) for each owner's WIP / ToDo subitems.
+      // The full estimate is credited to each owner (no split for co-owned subitems).
       const days = toDays(r.unitIsHours, units);
-      const share = owners.length ? days/owners.length : days;
+      const isActive = (cls === "wip" || cls === "todo");
       const list = owners.length ? owners : ["Unassigned"];
       list.forEach(o => {
         const p = ensure(o);
-        p.assignedDays += share; p.items += 1;
-        if (isDone) p.doneDays += share;
+        if (isActive){ p.assignedDays += days; p.items += 1; }
+        if (isDone){ p.doneDays += days; }   // kept for the Capacity vs. Delivered chart
       });
 
       if (cls === "blocked"){
@@ -582,7 +581,7 @@ function render(m){
       <div class="cap-head">
         <div>
           <h2>Sprint Capacity</h2>
-          <p class="desc" style="margin:0">Work allocation per team member · subitems whose parent item is in status "New" or "Done" are excluded</p>
+          <p class="desc" style="margin:0">Per owner: sum of estimate hours (shown as days @8h) for subitems in status WIP or ToDo. Co-owned subitems credit the full estimate to each owner.</p>
         </div>
         <div class="cap-cfg">
           <label for="capDays">Sprint days</label>
@@ -874,11 +873,8 @@ function drawBurn(m){
 function buildBurn(data, m){
   const r = m.r; const estId = r.estCol && r.estCol.id;
   const subStatusId = r.subStatusCol && r.subStatusCol.id;
-  const itemStatusId = r.itemStatusCol && r.itemStatusCol.id;
   const ev = [];
   (data.items||[]).forEach(it=>{
-    const parentStatus = itemStatusId ? (it.column_values || {})[itemStatusId] : null;
-    if (parentStatus && /^\s*(new|done)\s*$/i.test(parentStatus)) return;   // skip "New" / "Done" parents
     (it.subitems||[]).forEach(s=>{
       const cv=s.column_values||{};
       const st = subStatusId ? cv[subStatusId] : null;
